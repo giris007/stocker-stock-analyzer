@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Stock Pro Analyzer | NSE/BSE Insights</title>
+    <meta name="description" content="AI-powered Indian stock analyzer for NSE and BSE equities. Get short-term and long-term buy, sell, or hold recommendations with target price analysis.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── CSS Custom Properties ── */
+        :root {
+            --bg-from: #050714;
+            --bg-mid:  #0f172a;
+            --bg-to:   #1e1035;
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.10);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #fbbf24;
+            --accent-blue: #60a5fa;
+            --accent-purple: #a78bfa;
+            --primary-from: #7c3aed;
+            --primary-to: #c026d3;
+            --card-radius: 20px;
+            --input-radius: 12px;
+        }
+
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(ellipse at top left, #2d1a6e 0%, #0d0b1e 35%, #05071a 70%, #0a0a1f 100%);
+            min-height: 100vh;
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* ── Decorative Orbs ── */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+            animation: pulse 8s ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 600px; height: 600px; background: #4f1fff; top: -200px; left: -200px; animation-delay: 0s; }
+        .orb-2 { width: 500px; height: 500px; background: #9f0bce; bottom: -150px; right: -150px; animation-delay: 3s; }
+        .orb-3 { width: 350px; height: 350px; background: #1d4ed8; top: 40%; left: 50%; transform: translate(-50%, -50%); animation-delay: 1.5s; }
+
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 0.3; }
+            to   { transform: scale(1.12); opacity: 0.45; }
+        }
+
+        /* ── Layout ── */
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1.25rem 4rem;
+        }
+
+        /* ── Header ── */
+        header {
+            width: 100%;
+            max-width: 1000px;
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-top: 2rem;
+        }
+
+        .logo-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.4);
+            color: var(--accent-purple);
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.35rem 1rem;
+            border-radius: 999px;
+            margin-bottom: 1.25rem;
+        }
+
+        .logo-tag span { width: 6px; height: 6px; background: var(--accent-purple); border-radius: 50%; display: inline-block; }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.25rem);
+            font-weight: 800;
+            background: linear-gradient(to right, #e0e7ff 30%, #a78bfa 60%, #e879f9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+            margin-bottom: 0.75rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: clamp(1rem, 2.5vw, 1.15rem);
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ── Ticker Marquee ── */
+        .marquee-wrapper {
+            width: 100%;
+            max-width: 1000px;
+            overflow: hidden;
+            margin-bottom: 2.5rem;
+            mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+
+        .marquee-track {
+            display: flex;
+            gap: 2rem;
+            animation: marquee 20s linear infinite;
+            white-space: nowrap;
+        }
+
+        @keyframes marquee {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .ticker-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .ticker-chip .up   { color: var(--accent-green); }
+        .ticker-chip .down { color: var(--accent-red);   }
+        .ticker-chip .name { color: var(--text-muted); margin-right: 0.4rem; }
+
+        /* ── Main Grid ── */
+        .main-grid {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 780px) {
+            .main-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        /* ── Glass Card ── */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .glass-card:hover {
+            box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.25), 0 30px 60px -20px rgba(0,0,0,0.5);
+        }
+
+        /* Card Titles */
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title svg { opacity: 0.8; }
+
+        /* ── Form Inputs ── */
+        .form-group { margin-bottom: 1.25rem; }
+
+        label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: #cbd5e1;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            background: rgba(0,0,0,0.25);
+            border: 1.5px solid rgba(255,255,255,0.08);
+            color: var(--text-main);
+            padding: 0.9rem 1.1rem;
+            border-radius: var(--input-radius);
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+
+        input[type="text"]::placeholder, input[type="number"]::placeholder { color: rgba(255,255,255,0.25); }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: rgba(124, 58, 237, 0.7);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+        }
+
+        /* Horizon type selector */
+        .horizon-group { margin-bottom: 1.5rem; }
+
+        .horizon-opts {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.45rem;
+        }
+
+        .horizon-opt {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.7rem;
+            border-radius: var(--input-radius);
+            border: 1.5px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .horizon-opt:hover { border-color: rgba(167, 139, 250, 0.4); color: #e0e7ff; }
+
+        .horizon-opt.selected {
+            background: rgba(124, 58, 237, 0.2);
+            border-color: rgba(124, 58, 237, 0.6);
+            color: #c4b5fd;
+        }
+
+        /* Analyze Button */
+        .analyze-btn {
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary-from), var(--primary-to));
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px -8px rgba(124, 58, 237, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyze-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .analyze-btn:hover::after { transform: translateX(100%); }
+
+        .analyze-btn:hover {
+            box-shadow: 0 12px 32px -8px rgba(192, 38, 211, 0.65);
+            transform: translateY(-2px);
+        }
+
+        .analyze-btn:active { transform: translateY(0); }
+
+        /* Spinner */
+        .spinner {
+            display: none;
+            width: 20px; height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Results Panel ── */
+        .results-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 1rem;
+            padding: 3rem 1.5rem;
+            height: 100%;
+        }
+
+        .results-empty svg { opacity: 0.25; }
+        .results-empty p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; }
+
+        .results-body { display: none; animation: fadeSlide 0.45s ease; }
+
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+
+        .res-ticker {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.15rem;
+        }
+
+        .res-exchange {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Upside donut */
+        .upside-visual {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 14px;
+            padding: 1.1rem 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .donut-wrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+
+        .donut-wrap svg { transform: rotate(-90deg); }
+
+        .donut-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        .upside-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.15rem; }
+        .upside-value { font-size: 1.5rem; font-weight: 800; }
+
+        /* Metric rows */
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .metric-row:last-child { border-bottom: none; }
+
+        .metric-label { font-size: 0.88rem; color: var(--text-muted); font-weight: 600; }
+
+        .metric-val { font-weight: 700; font-size: 1rem; }
+
+        /* Recommendation Pills */
+        .badge {
+            padding: 0.3rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge-buy        { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.4); }
+        .badge-strong-buy { background: rgba(16,185,129,0.2);  color: #6ee7b7; border: 1px solid rgba(16,185,129,0.6); }
+        .badge-accumulate { background: rgba(96,165,250,0.15); color: #93c5fd; border: 1px solid rgba(96,165,250,0.4); }
+        .badge-hold       { background: rgba(251,191,36,0.12); color: #fcd34d; border: 1px solid rgba(251,191,36,0.35); }
+        .badge-sell       { background: rgba(244,63,94,0.12);  color: #fb7185; border: 1px solid rgba(244,63,94,0.35); }
+        .badge-strong-sell{ background: rgba(244,63,94,0.2);   color: #fda4af; border: 1px solid rgba(244,63,94,0.55); }
+
+        /* Risk Meter */
+        .risk-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; margin-left: 1rem; overflow: hidden; }
+        .risk-bar      { height: 100%; border-radius: 999px; transition: width 0.8s ease; }
+        .risk-display  { display: flex; align-items: center; gap: 0.5rem; }
+
+        /* Stop Loss row */
+        .stop-loss-value { color: var(--accent-red); font-weight: 800; }
+
+        /* Divider zones */
+        .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 1.25rem 0; }
+
+        /* ── Bottom Panel: Disclaimer ── */
+        .disclaimer {
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 1.5rem;
+            padding: 1rem 1.5rem;
+            background: rgba(251,191,36,0.06);
+            border: 1px solid rgba(251,191,36,0.2);
+            border-radius: 12px;
+            font-size: 0.78rem;
+            color: #92856a;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* ── Watchlist Section ── */
+        .watchlist-section {
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 1.5rem;
+        }
+
+        .section-heading {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 1rem;
+        }
+
+        .watchlist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .watch-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .watch-card:hover {
+            border-color: rgba(167,139,250,0.4);
+            background: rgba(124, 58, 237, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .wc-name  { font-weight: 700; font-size: 1rem; margin-bottom: 0.1rem; }
+        .wc-sector { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+        .wc-price { font-size: 1.2rem; font-weight: 800; }
+        .wc-change { font-size: 0.8rem; font-weight: 600; margin-top: 0.1rem; }
+        .wc-change.up   { color: var(--accent-green); }
+        .wc-change.down { color: var(--accent-red); }
+
+        /* ── Utilities ── */
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Decorative background orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="page-wrapper">
+
+        <!-- HEADER -->
+        <header>
+            <div class="logo-tag"><span></span> NSE · BSE Analytics</div>
+            <h1>Indian Stock Pro Analyzer</h1>
+            <p class="subtitle">Enter any stock symbol with buy &amp; target prices to get AI-driven short and long-term recommendations instantly.</p>
+        </header>
+
+        <!-- TICKER MARQUEE -->
+        <div class="marquee-wrapper">
+            <div class="marquee-track" id="marqueeTrack"></div>
+        </div>
+
+        <!-- MAIN ANALYSIS GRID -->
+        <div class="main-grid">
+
+            <!-- LEFT: Input Card -->
+            <div class="glass-card">
+                <div class="card-title">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 3H3v8l9.29 9.29a1 1 0 001.42 0l6.58-6.58a1 1 0 000-1.42z"></path><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"></circle></svg>
+                    Stock Details
+                </div>
+
+                <div class="form-group">
+                    <label for="inputTicker">Stock Symbol</label>
+                    <input type="text" id="inputTicker" placeholder="e.g. RELIANCE, TCS, INFY" maxlength="20" autocomplete="off" spellcheck="false">
+                </div>
+
+                <div class="form-group">
+                    <label for="inputEntry">Entry / Buy Price (₹)</label>
+                    <input type="number" id="inputEntry" placeholder="e.g. 2400.00" min="0" step="0.05">
+                </div>
+
+                <div class="form-group">
+                    <label for="inputTarget">Target Price (₹)</label>
+                    <input type="number" id="inputTarget" placeholder="e.g. 2900.00" min="0" step="0.05">
+                </div>
+
+                <div class="form-group">
+                    <label for="inputStopLoss">Stop Loss Price (₹) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+                    <input type="number" id="inputStopLoss" placeholder="e.g. 2200.00" min="0" step="0.05">
+                </div>
+
+                <div class="horizon-group">
+                    <label>Investment Horizon</label>
+                    <div class="horizon-opts">
+                        <div class="horizon-opt selected" id="horizonBoth" onclick="selectHorizon('both')">Both</div>
+                        <div class="horizon-opt" id="horizonShort" onclick="selectHorizon('short')">Short Term</div>
+                        <div class="horizon-opt" id="horizonLong"  onclick="selectHorizon('long')">Long Term</div>
+                    </div>
+                </div>
+
+                <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">
+                    <svg id="btnIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <span id="btnLabel">Analyze Stock</span>
+                    <div class="spinner" id="btnSpinner"></div>
+                </button>
+            </div>
+
+            <!-- RIGHT: Results Card -->
+            <div class="glass-card" id="resultsCard">
+
+                <!-- Empty state -->
+                <div class="results-empty" id="resultsEmpty">
+                    <svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M3 3v18h18"></path>
+                        <path d="m19 9-5 5-4-4-3 3"></path>
+                    </svg>
+                    <p>Enter your stock details on the left and hit <strong>Analyze Stock</strong> to receive a smart recommendation.</p>
+                </div>
+
+                <!-- Results -->
+                <div class="results-body" id="resultsBody">
+
+                    <div id="resTicker" class="res-ticker">RELIANCE</div>
+                    <div id="resExchange" class="res-exchange">National Stock Exchange &bull; Equity</div>
+
+                    <!-- Upside Donut -->
+                    <div class="upside-visual">
+                        <div class="donut-wrap">
+                            <svg width="64" height="64" viewBox="0 0 64 64">
+                                <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+                                <circle id="donutArc" cx="32" cy="32" r="26" fill="none" stroke="#10b981" stroke-width="8"
+                                    stroke-dasharray="163.36" stroke-dashoffset="163.36" stroke-linecap="round"
+                                    style="transition: stroke-dashoffset 1s ease, stroke 0.5s ease;"/>
+                            </svg>
+                            <div class="donut-center" id="donutPct">0%</div>
+                        </div>
+                        <div>
+                            <div class="upside-label">Upside Potential</div>
+                            <div class="upside-value" id="upsideVal">+0.00%</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem;" id="upsideSubtext">From entry to target</div>
+                        </div>
+                    </div>
+
+                    <!-- Price Metrics -->
+                    <div class="metric-row">
+                        <span class="metric-label">Entry Price</span>
+                        <span class="metric-val" id="resEntry">₹0.00</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Target Price</span>
+                        <span class="metric-val" id="resTarget">₹0.00</span>
+                    </div>
+                    <div class="metric-row" id="stopLossRow">
+                        <span class="metric-label">Stop Loss</span>
+                        <span class="metric-val stop-loss-value" id="resStopLoss">₹0.00</span>
+                    </div>
+                    <div class="metric-row" id="rrRatioRow">
+                        <span class="metric-label">Risk / Reward Ratio</span>
+                        <span class="metric-val" id="resRR">1 : 2</span>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Risk Profile -->
+                    <div class="metric-row">
+                        <span class="metric-label">Risk Profile</span>
+                        <div class="risk-display">
+                            <span class="metric-val" id="resRiskLabel">Moderate</span>
+                            <div class="risk-bar-wrap">
+                                <div class="risk-bar" id="resRiskBar" style="width:50%; background:#fbbf24;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Recommendations -->
+                    <div class="metric-row" id="shortTermRow">
+                        <span class="metric-label">Short Term Action</span>
+                        <span class="badge badge-hold" id="resShortTerm">HOLD</span>
+                    </div>
+                    <div class="metric-row" id="longTermRow">
+                        <span class="metric-label">Long Term Action</span>
+                        <span class="badge badge-buy" id="resLongTerm">BUY</span>
+                    </div>
+
+                    <!-- Analyst Comments -->
+                    <div style="margin-top:1.25rem; background:rgba(0,0,0,0.2); border-radius:12px; padding:1rem 1.1rem;">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem;">Analyst Note</div>
+                        <p id="analystNote" style="font-size:0.88rem; color:#cbd5e1; line-height:1.65;"></p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- WATCHLIST / POPULAR STOCKS -->
+        <div class="watchlist-section">
+            <div class="section-heading">Popular Stocks — Click to prefill</div>
+            <div class="watchlist-grid" id="watchlistGrid"></div>
+        </div>
+
+        <!-- DISCLAIMER -->
+        <div class="disclaimer">
+            ⚠️ <strong>Disclaimer:</strong> This tool provides educational analysis based on simple price-ratio models. It does NOT constitute financial advice. Always consult a SEBI-registered advisor before investing. Market investments are subject to risk.
+        </div>
+    </div>
+
+    <script>
+    'use strict';
+
+    /* ── Popular Stocks Data ── */
+    const POPULAR_STOCKS = [
+        { name: 'RELIANCE', sector: 'Energy', price: 2847.55, change: +1.24 },
+        { name: 'TCS',      sector: 'IT',     price: 3541.20, change: -0.38 },
+        { name: 'HDFCBANK', sector: 'Finance', price: 1623.40, change: +0.89 },
+        { name: 'INFY',     sector: 'IT',      price: 1482.00, change: -0.61 },
+        { name: 'WIPRO',    sector: 'IT',      price: 462.75,  change: +0.45 },
+        { name: 'BAJFINANCE', sector: 'NBFC',  price: 7218.90, change: +1.77 },
+        { name: 'SBIN',     sector: 'Banking', price: 768.30,  change: -0.22 },
+        { name: 'TATAMOTORS', sector: 'Auto',  price: 918.60,  change: +2.15 },
+        { name: 'ADANIENT', sector: 'Infra',  price: 2387.40, change: -1.05 },
+        { name: 'ICICIBANK', sector: 'Banking', price: 1046.80, change: +0.58 },
+    ];
+
+    /* ── Marquee Tickers ── */
+    const MARQUEE_DATA = [
+        ...POPULAR_STOCKS,
+        ...POPULAR_STOCKS // duplicate for seamless loop
+    ];
+
+    function buildMarquee() {
+        const track = document.getElementById('marqueeTrack');
+        MARQUEE_DATA.forEach(s => {
+            const chip = document.createElement('div');
+            chip.className = 'ticker-chip';
+            const dir = s.change >= 0 ? 'up' : 'down';
+            const arrow = s.change >= 0 ? '▲' : '▼';
+            chip.innerHTML = `<span class="name">${s.name}</span><span class="${dir}">${arrow} ${Math.abs(s.change).toFixed(2)}%</span>`;
+            track.appendChild(chip);
+        });
+    }
+
+    /* ── Watchlist Cards ── */
+    function buildWatchlist() {
+        const grid = document.getElementById('watchlistGrid');
+        POPULAR_STOCKS.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'watch-card';
+            card.innerHTML = `
+                <div class="wc-name">${s.name}</div>
+                <div class="wc-sector">${s.sector}</div>
+                <div class="wc-price">₹${s.price.toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+                <div class="wc-change ${s.change>=0?'up':'down'}">${s.change>=0?'▲':'▼'} ${Math.abs(s.change).toFixed(2)}%</div>
+            `;
+            card.onclick = () => {
+                document.getElementById('inputTicker').value  = s.name;
+                document.getElementById('inputEntry').value   = s.price.toFixed(2);
+                document.getElementById('inputTarget').value  = '';
+                document.getElementById('inputStopLoss').value = '';
+                document.getElementById('inputTicker').focus();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+            grid.appendChild(card);
+        });
+    }
+
+    /* ── Horizon Selector ── */
+    let selectedHorizon = 'both';
+
+    function selectHorizon(h) {
+        selectedHorizon = h;
+        ['both','short','long'].forEach(id => {
+            document.getElementById('horizon' + id.charAt(0).toUpperCase() + id.slice(1))
+                .classList.toggle('selected', id === h);
+        });
+    }
+
+    /* ── Helpers ── */
+    const fmt = n => '₹' + parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function setBadge(el, text, cls) {
+        el.textContent = text;
+        el.className = 'badge badge-' + cls;
+    }
+
+    function setDonut(pct) {
+        const circ = 2 * Math.PI * 26; // 163.36
+        const capped = Math.min(Math.max(pct, 0), 100);
+        const offset = circ - (capped / 100) * circ;
+        const arc = document.getElementById('donutArc');
+        arc.style.strokeDashoffset = offset;
+        // Color based on pct
+        arc.style.stroke = pct >= 15 ? '#10b981' : pct >= 5 ? '#60a5fa' : pct >= 0 ? '#fbbf24' : '#f43f5e';
+        document.getElementById('donutPct').textContent = (pct > 0 ? '+' : '') + pct.toFixed(0) + '%';
+    }
+
+    function setRisk(level) {
+        // level: 0=Very Low, 1=Low, 2=Moderate, 3=High, 4=Very High
+        const labels  = ['Very Low', 'Low', 'Moderate', 'High', 'Very High'];
+        const widths  = ['15%', '30%', '55%', '75%', '95%'];
+        const colors  = ['#6ee7b7', '#34d399', '#fbbf24', '#f97316', '#f43f5e'];
+        const bar = document.getElementById('resRiskBar');
+        bar.style.width      = widths[level];
+        bar.style.background = colors[level];
+        document.getElementById('resRiskLabel').textContent = labels[level];
+        document.getElementById('resRiskLabel').style.color  = colors[level];
+    }
+
+    /* ── Main Analysis ── */
+    function runAnalysis() {
+        const ticker   = document.getElementById('inputTicker').value.trim().toUpperCase();
+        const entry    = parseFloat(document.getElementById('inputEntry').value);
+        const target   = parseFloat(document.getElementById('inputTarget').value);
+        const stopRaw  = parseFloat(document.getElementById('inputStopLoss').value);
+        const hasStop  = !isNaN(stopRaw) && stopRaw > 0;
+
+        if (!ticker) { shake('inputTicker'); return; }
+        if (isNaN(entry) || entry <= 0) { shake('inputEntry'); return; }
+        if (isNaN(target) || target <= 0) { shake('inputTarget'); return; }
+
+        // Show loading state
+        const btn = document.getElementById('analyzeBtn');
+        document.getElementById('btnLabel').textContent = 'Analyzing…';
+        document.getElementById('btnIcon').classList.add('hidden');
+        document.getElementById('btnSpinner').style.display = 'block';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            compute(ticker, entry, target, hasStop ? stopRaw : null);
+            document.getElementById('btnLabel').textContent = 'Analyze Stock';
+            document.getElementById('btnIcon').classList.remove('hidden');
+            document.getElementById('btnSpinner').style.display = 'none';
+            btn.disabled = false;
+        }, 850);
+    }
+
+    function compute(ticker, entry, target, stop) {
+        const pct = ((target - entry) / entry) * 100;
+
+        /* ---- Recommendation Logic ---- */
+        let shortTerm, longTerm, shortCls, longCls, riskLevel, note;
+
+        if (pct >= 25) {
+            shortTerm='BUY';         shortCls='buy';
+            longTerm='STRONG BUY';   longCls='strong-buy';
+            riskLevel = 1;
+            note = `${ticker} shows exceptional upside of ${pct.toFixed(1)}%. Excellent entry point with strong long-term growth thesis. Suitable for both momentum and value investors. Consider accumulating in tranches.`;
+        } else if (pct >= 15) {
+            shortTerm='BUY';         shortCls='buy';
+            longTerm='BUY';          longCls='buy';
+            riskLevel = 1;
+            note = `${ticker} presents a solid ${pct.toFixed(1)}% upside opportunity. Favorable risk-reward for both time frames. Good for SIP-style accumulation over the long term.`;
+        } else if (pct >= 8) {
+            shortTerm='ACCUMULATE';  shortCls='accumulate';
+            longTerm='BUY';          longCls='buy';
+            riskLevel = 2;
+            note = `Moderate upside of ${pct.toFixed(1)}% in ${ticker}. Accumulate on dips for better margin of safety. Long term fundamentals support a BUY thesis.`;
+        } else if (pct >= 3) {
+            shortTerm='HOLD';        shortCls='hold';
+            longTerm='ACCUMULATE';   longCls='accumulate';
+            riskLevel = 2;
+            note = `Limited short-term upside (~${pct.toFixed(1)}%) for ${ticker}. Better to hold existing positions. Long-term investors can accumulate if fundamentals are strong.`;
+        } else if (pct >= 0) {
+            shortTerm='HOLD';        shortCls='hold';
+            longTerm='HOLD';         longCls='hold';
+            riskLevel = 2;
+            note = `${ticker} is trading near fair value with minimal upside (${pct.toFixed(1)}%). A cautious HOLD is advised. Reassess at next earnings or sector development.`;
+        } else if (pct >= -8) {
+            shortTerm='SELL';        shortCls='sell';
+            longTerm='HOLD';         longCls='hold';
+            riskLevel = 3;
+            note = `${ticker} target is ${Math.abs(pct).toFixed(1)}% below entry — a downside scenario. Consider trimming short-term positions. Long-term holders may wait for recovery if fundamentals are intact.`;
+        } else {
+            shortTerm='STRONG SELL'; shortCls='strong-sell';
+            longTerm='SELL';         longCls='sell';
+            riskLevel = 4;
+            note = `Significant downside risk (${Math.abs(pct).toFixed(1)}%) identified for ${ticker}. A strong exit signal for both time frames. Capital preservation is priority — adhere to stop-loss discipline.`;
+        }
+
+        /* ---- Horizon filter ---- */
+        const shortRow = document.getElementById('shortTermRow');
+        const longRow  = document.getElementById('longTermRow');
+        shortRow.style.display = (selectedHorizon === 'long')  ? 'none' : 'flex';
+        longRow.style.display  = (selectedHorizon === 'short') ? 'none' : 'flex';
+
+        /* ---- Stop Loss & R:R ---- */
+        const stopLossRow = document.getElementById('stopLossRow');
+        const rrRatioRow  = document.getElementById('rrRatioRow');
+
+        if (stop) {
+            stopLossRow.style.display = 'flex';
+            document.getElementById('resStopLoss').textContent = fmt(stop);
+
+            const reward = target - entry;
+            const risk   = entry - stop;
+            if (risk > 0) {
+                rrRatioRow.style.display = 'flex';
+                const rr = (reward / risk).toFixed(1);
+                document.getElementById('resRR').textContent = `1 : ${rr}`;
+                document.getElementById('resRR').style.color = rr >= 2 ? 'var(--accent-green)' : rr >= 1 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+            } else {
+                rrRatioRow.style.display = 'none';
+            }
+        } else {
+            stopLossRow.style.display = 'none';
+            rrRatioRow.style.display  = 'none';
+        }
+
+        /* ---- Populate DOM ---- */
+        document.getElementById('resTicker').textContent  = ticker;
+        document.getElementById('resExchange').textContent = 'NSE / BSE · Indian Equity';
+        document.getElementById('resEntry').textContent   = fmt(entry);
+        document.getElementById('resTarget').textContent  = fmt(target);
+
+        const uv = document.getElementById('upsideVal');
+        uv.textContent  = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+        uv.style.color  = pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+
+        document.getElementById('upsideSubtext').textContent = pct >= 0
+            ? 'Potential gain from entry to target'
+            : 'Loss risk if target is below entry';
+
+        setDonut(pct);
+        setRisk(riskLevel);
+        setBadge(document.getElementById('resShortTerm'), shortTerm, shortCls);
+        setBadge(document.getElementById('resLongTerm'),  longTerm,  longCls);
+
+        document.getElementById('analystNote').textContent = note;
+
+        /* ---- Show Results ---- */
+        document.getElementById('resultsEmpty').style.display = 'none';
+        const rb = document.getElementById('resultsBody');
+        rb.style.display = 'block';
+        rb.style.animation = 'none';
+        void rb.offsetWidth;
+        rb.style.animation = '';
+    }
+
+    /* Shake animation on invalid input */
+    function shake(id) {
+        const el = document.getElementById(id);
+        el.style.transition = 'transform 0.07s ease';
+        const moves = [6, -6, 5, -5, 3, -3, 0];
+        let i = 0;
+        const next = () => {
+            el.style.transform = `translateX(${moves[i]}px)`;
+            if (++i < moves.length) setTimeout(next, 60); else { el.style.transform = ''; el.focus(); }
+        };
+        next();
+        el.style.borderColor = 'rgba(244,63,94,0.7)';
+        setTimeout(() => { el.style.borderColor = ''; }, 1200);
+    }
+
+    /* Allow Enter key to trigger analysis */
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') runAnalysis();
+    });
+
+    /* ── Init ── */
+    buildMarquee();
+    buildWatchlist();
+    </script>
+</body>
+</html>
